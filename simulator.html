@@ -255,32 +255,44 @@
         };
 
         var data_pdf = [
-            { y: numTrials.slice(0, maxTrialInSimulation + 10), type: "bar" },
+            {
+                y: numTrials.slice(0, maxTrialInSimulation + 10),
+                type: "bar",
+            },
         ];
         var layout_pdf = {
             height: 500,
             width: 400,
             xaxis: {
-                title: '試行回数'
+                title: '試行回数',
+                fixedrange: true
             },
             yaxis: {
-                title: 'ちょうどその回数でSができる確率'
+                title: 'ちょうどその回数でSができる確率',
+                fixedrange: true
             },
+            bargap: 0
         };
         Plotly.newPlot('pdf', data_pdf, layout_pdf);
 
         var data_cdf = [
-            { y: cumTrials.slice(0, maxTrialInSimulation + 10), type: "bar" },
+            {
+                y: cumTrials.slice(0, maxTrialInSimulation + 10),
+                type: "bar",
+            },
         ];
         var layout_cdf = {
             height: 500,
             width: 400,
             xaxis: {
-                title: '試行回数'
+                title: '試行回数',
+                fixedrange: true
             },
             yaxis: {
-                title: 'その回数までにSができる確率'
+                title: 'その回数までにSができる確率',
+                fixedrange: true
             },
+            bargap: 0
         };
         Plotly.newPlot('cdf', data_cdf, layout_cdf);
     }
