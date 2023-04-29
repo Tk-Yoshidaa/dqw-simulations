@@ -1,0 +1,292 @@
+<head>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    const symbols = ["S", "A", "B", "C", "D"];
+    const templateNames = [
+        "ストーリー",
+        "強敵",
+        "ほこら",
+        "メガモンスター",
+        "その他"];
+    const defaultRequires = {
+        "ストーリー": [4, 3, 3, 2],
+        "強敵": [5, 5, 5, 5],
+        "ほこら": [6, 6, 6, 6],
+        "メガモンスター": [7, 7, 7, 7],
+        "その他": [0, 0, 0, 0]
+    };
+    const defaultDropRate = {
+        "ストーリー": [0.02, 0.05, 0.1, 0.3],
+        "強敵": [0.1, 0.2, 0.2, 0.4],
+        "ほこら": [0.1, 0.3, 0.1, 0.1],
+        "メガモンスター": [0.1, 0.1, 0.1, 0.1],
+        "その他": [0, 0, 0, 0]
+    };
+    const numSimulations = 10000;
+    const maxTrials = 1000;
+
+    const inputOptions = `type="number" step="1" style="text-align: right; width: 4em;" min="0"`;
+    const inputOptionsProb = `type="number" step="0.01" style="width: 4em;" min="0" max="1"`;
+
+    function updateDefaultSelected(event)
+    {
+        var sumProb = 1.0;
+        var value = event.target.value;
+        for (let i = 0; i < symbols.length - 1; ++i)
+        {
+            let sym = symbols[i];
+            let symLower = symbols[i + 1];
+            document.getElementById(`numOf${symLower}Required`).value = defaultRequires[value][i];
+            document.getElementById(`dropRateOf${sym}`).value = parseFloat(defaultDropRate[value][i]).toFixed(2);
+            sumProb = parseFloat(sumProb) + parseFloat(- defaultDropRate[value][i]);
+        }
+        document.getElementById(`dropRateOf${symbols[symbols.length - 1]}`).value = sumProb.toFixed(2);
+    }
+
+    function modifyByRange(selectObject, minValue, maxValue)
+    {
+        if (selectObject.value < minValue) selectObject.value = minValue;
+        if (selectObject.value > maxValue) selectObject.value = maxValue;
+    }
+
+    function updateProb(selectObject)
+    {
+        modifyByRange(selectObject, 0, 1);
+        selectObject.value = parseFloat(selectObject.value).toFixed(2);
+
+        var sumProb = 1.0;
+        for (let i = 0; i < symbols.length - 1; ++i)
+        {
+            let sym = symbols[i];
+            let value = document.getElementById(`dropRateOf${sym}`).value;
+            sumProb = parseFloat(sumProb) + parseFloat(- value);
+        }
+        document.getElementById(`dropRateOf${symbols[symbols.length - 1]}`).value = sumProb.toFixed(2);
+    }
+</script>
+</head>
+
+<body>
+<h1>こころシミュレーション</h1>
+
+
+<h3>現在の所持数</h3>
+<table style="margin-left: 0.8em;">
+    <script>
+        for (let i = 0; i < symbols.length - 1; ++i)
+        {
+            let onchange = 'onchange="modifyByRange(this, 0, 1000)"'
+            let sym = symbols[i + 1];
+            document.write('<tr>');
+            document.write(`<td><label for="numOf${sym}">${sym}: </label></td>`);
+            document.write(`<td><input ${onchange} ${inputOptions} id="numOf${sym}" value="0"></td>`);
+            document.write('<tr>');
+        }
+    </script>
+</table>
+
+
+<h3>こころの種類</h3>
+<select style="margin-left: 0.8em;" id="selectFromTemplate" onchange="updateDefaultSelected(event)" autofocus >
+    <script>
+        for (let i = 0; i < templateNames.length; ++i)
+        {
+            name = templateNames[i]
+            document.write(`<option value="${name}">${name}</option>`);
+        }
+    </script>
+</select>
+
+
+<h4 style="margin-left: 0.8em; margin-bottom: -0.1em;">アップグレードに必要な数</h4>
+<table style="margin-left: 0.8em;">
+    <script>
+        for (let i = 0; i < symbols.length - 1; ++i)
+        {
+            let onchange = 'onchange="modifyByRange(this, 0, 100)"'
+            let sym = symbols[i];
+            let symLower = symbols[i + 1];
+            let value = defaultRequires[document.getElementById("selectFromTemplate").value][i];
+            document.write('<tr>');
+            document.write(`<td><label for="numOf${symLower}Required">${symLower} → ${sym}: </label></td>`);
+            document.write(`<td><input ${inputOptions} ${onchange} id="numOf${symLower}Required" value="${value}"></td>`);
+            document.write('</tr>');
+        }
+    </script>
+</table>
+
+
+<h4 style="margin-left: 0.8em; margin-bottom: -0.1em;">ドロップ率</h4>
+<table style="margin-left: 0.8em;">
+    <script>
+        var sumProb = 1.0;
+        for (let i = 0; i < symbols.length; ++i)
+        {
+            let sym = symbols[i];
+            let value = parseFloat(defaultDropRate[document.getElementById("selectFromTemplate").value][i]);
+            document.write('<tr>');
+            document.write(`<td><label for="dropRateOf${sym}">${sym}: </label></td>`);
+
+            var options = '';
+            if (i != symbols.length - 1)
+            {
+                options = ' onchange="updateProb(this)"';
+                sumProb = parseFloat(sumProb) + parseFloat(- value);
+            }
+            else
+            {
+                options =' readonly';
+                value = sumProb;
+            }
+            document.write(`<td><input${options} ${inputOptionsProb} id="dropRateOf${sym}" value="${value.toFixed(2)}"></td>`);
+        }
+    </script>
+</table>
+
+
+<h3>シミュレーション</h3>
+<script>
+    function upgrade(numOfHearts, numOfHeartsRequired)
+    {
+        for (let i = symbols.length - 1; i >= 1; --i)
+        {
+            let symLower = symbols[i];
+            let nSym = numOfHearts[i];
+            let nRequired = numOfHeartsRequired[i - 1];
+            let nUpgrade = Math.floor(nSym / nRequired);
+
+            if (nUpgrade > 0)
+                console.log(`${symLower} ${nSym} ${nRequired} ${nUpgrade}`);
+
+            numOfHearts[i - 1] += nUpgrade;
+            numOfHearts[i] -= nUpgrade * nRequired;
+            
+            if (nUpgrade > 0)
+                console.log(`Upgrade ${symLower}:`
+                    + ` ${nSym} -> ${numOfHearts[i]}`
+                    + ` => ${symbols[i - 1]}: `
+                    + ` ${numOfHearts[i - 1] - nUpgrade} -> ${numOfHearts[i - 1]}`);
+        }
+    }
+
+    function drop(dropRates)
+    {
+        let trial = Math.random();
+        let criterion = 0.0;
+
+        for (let i = 0; i < symbols.length - 1; ++i)
+        {
+            criterion += dropRates[i];
+            if (trial <= criterion)
+            {
+                return i;
+            }
+        }
+        return symbols.length - 1;
+    }
+
+    function sleep(ms) { return new Promise((r) =>setTimeout(r, ms)); }
+
+    async function simulate()
+    {
+        numOfHearts = [0, 0, 0, 0, 0];
+        numOfHeartsRequired = [0, 0, 0, 0];
+        dropRates = [0, 0, 0, 0, 0];
+
+        for (let i = 0; i < symbols.length; ++i)
+        {
+            if (i < symbols.length - 1)
+            {
+                let symLower = symbols[i + 1];
+                numOfHearts[i + 1] = parseInt(document.getElementById(`numOf${symLower}`).value);
+                numOfHeartsRequired[i] = parseInt(document.getElementById(`numOf${symLower}Required`).value);
+                console.log(`numOf${symLower}: ${numOfHearts[i + 1]}`);
+                console.log(`numOf${symLower}Required: ${numOfHeartsRequired[i]}`);
+            }
+            let sym = symbols[i];
+            dropRates[i] = parseFloat(document.getElementById(`dropRateOf${sym}`).value);
+            console.log(`dropRateOf${sym}: ${dropRates[i]}`);
+        }
+
+        upgrade(numOfHearts, numOfHeartsRequired);
+
+        document.getElementById("progressBar").max = numSimulations;
+
+        numTrials = Array(maxTrials).fill(0);
+        cumTrials = Array(maxTrials).fill(0);
+        for (let i = 0; i < numSimulations; ++i)
+        {
+            numOfHearts_ = numOfHearts.slice(0);
+            let j = 0;
+            for (; j < maxTrials; ++j)
+            {
+                let rank = drop(dropRates);
+                numOfHearts_[rank] += 1;
+                
+                console.log(`Drop: ${symbols[rank]}`);
+
+                upgrade(numOfHearts_, numOfHeartsRequired);
+
+                if (numOfHearts_[0] >= 1)
+                {
+                    break;
+                }
+            }
+            numTrials[j]++;
+            document.getElementById('progressBar').value = i;
+            if (i % 500 == 0)
+                await sleep(0);
+        }
+
+        maxTrialInSimulation = 0;
+        cumSum = 0.0;
+        for (let i = 0; i < numTrials.length; ++i)
+        {
+            if (numTrials[i] != 0)
+                maxTrialInSimulation = i;
+            cumSum += numTrials[i];
+            cumTrials[i] = cumSum / numSimulations;
+            numTrials[i] /= numSimulations;
+        };
+
+        var data_pdf = [
+            { y: numTrials.slice(0, maxTrialInSimulation + 10), type: "bar" },
+        ];
+        var layout_pdf = {
+            height: 500,
+            width: 400,
+            xaxis: {
+                title: '試行回数'
+            },
+            yaxis: {
+                title: 'ちょうどその回数でSができる確率'
+            },
+        };
+        Plotly.newPlot('pdf', data_pdf, layout_pdf);
+
+        var data_cdf = [
+            { y: cumTrials.slice(0, maxTrialInSimulation + 10), type: "bar" },
+        ];
+        var layout_cdf = {
+            height: 500,
+            width: 400,
+            xaxis: {
+                title: '試行回数'
+            },
+            yaxis: {
+                title: 'その回数までにSができる確率'
+            },
+        };
+        Plotly.newPlot('cdf', data_cdf, layout_cdf);
+    }
+</script>
+<table>
+    <tr>
+        <td><button onclick="simulate()" style="height: 2em; width: 10em; margin-left: 0.8em;">スタート</button></td>
+        <td><progress id="progressBar" style="height: 3em; width: 10em;" value="0"></progress></td>
+    </tr>
+</table>
+<div id="pdf"></div>
+<div id="cdf"></div>
+
+</body>
