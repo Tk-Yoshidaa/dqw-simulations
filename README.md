@@ -1,4 +1,4 @@
-# dqw-loot-sim
+# dqw-simulations
 
 ## Usage
 ### For single simulation
